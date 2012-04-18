@@ -14,13 +14,15 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, see<http://www.gnu.org/licenses/>.
  **/
-package org.exoplatform.forum.webui.popup;
+package org.exoplatform.ks.common.webui;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 import org.exoplatform.commons.utils.ListAccess;
+import org.exoplatform.ks.common.CommonUtils;
+import org.exoplatform.ks.common.UserHelper;
 import org.exoplatform.ks.common.webui.UIPopupAction;
 import org.exoplatform.ks.common.webui.UIPopupContainer;
 import org.exoplatform.ks.common.webui.UISelectComponent;
@@ -28,6 +30,7 @@ import org.exoplatform.ks.common.webui.UISelector;
 import org.exoplatform.services.organization.Group;
 import org.exoplatform.services.organization.OrganizationService;
 import org.exoplatform.services.organization.User;
+import org.exoplatform.webui.application.WebuiRequestContext;
 import org.exoplatform.webui.config.annotation.ComponentConfig;
 import org.exoplatform.webui.config.annotation.ComponentConfigs;
 import org.exoplatform.webui.config.annotation.EventConfig;
@@ -48,7 +51,7 @@ import org.exoplatform.webui.organization.UIGroupMembershipSelector;
 
 @ComponentConfigs({ 
   @ComponentConfig(
-      template = "app:/templates/forum/webui/popup/UIGroupSelector.gtmpl",
+      template = "classpath:groovy/ks/common/UIGroupSelector.gtmpl",
       events = {
           @EventConfig(listeners = UIGroupSelector.ChangeNodeActionListener.class),
           @EventConfig(listeners = UIGroupSelector.SelectMembershipActionListener.class),
@@ -65,21 +68,39 @@ import org.exoplatform.webui.organization.UIGroupMembershipSelector;
       template = "system:/groovy/webui/core/UIBreadcumbs.gtmpl",
       events = @EventConfig(listeners = UIBreadcumbs.SelectPathActionListener.class)
   )
-})
+ })
 public class UIGroupSelector extends UIGroupMembershipSelector implements UIPopupComponent, UISelectComponent {
 
-  private UIComponent uiComponent;
+  private UIComponent         uiComponent;
 
-  private String      type_           = null;
+  private String              type_           = null;
 
-  @SuppressWarnings("unchecked")
-  private List        selectedGroup_;
+  private List<Group>         selectedGroup_;
 
-  private String      returnFieldName = null;
+  private String              returnFieldName = null;
+
+  private String              spaceId         = null;
+
+  private String              spaceParentId   = null;
+
+  private OrganizationService service;
 
   public UIGroupSelector() throws Exception {
+    service = UserHelper.getOrganizationService();
   }
 
+  @Override
+  public void processRender(WebuiRequestContext context) throws Exception {
+    if(!CommonUtils.isEmpty(spaceId)) {
+      UITree uiTree = getChild(UITree.class);
+      Group parentGroup = (Group)uiTree.getParentSelected();
+      if(parentGroup == null) {
+        uiTree.setParentSelected(null);
+      }
+    }
+    super.processRender(context);
+  }
+  
   public UIComponent getReturnComponent() {
     return uiComponent;
   }
@@ -102,13 +123,8 @@ public class UIGroupSelector extends UIGroupMembershipSelector implements UIPopu
     }
   }
 
-  @SuppressWarnings( { "unchecked", "cast" })
-  public List getChildGroup() throws Exception {
-    List children = new ArrayList();
-    OrganizationService service = getApplicationComponent(OrganizationService.class);
-    for (Object child : service.getGroupHandler().findGroups(this.getCurrentGroup())) {
-      children.add((Group) child);
-    }
+  public List<Group> getChildGroup() throws Exception {
+    List<Group> children = UserHelper.findGroups(getCurrentGroup());
     return children;
   }
 
@@ -127,7 +143,6 @@ public class UIGroupSelector extends UIGroupMembershipSelector implements UIPopu
   @SuppressWarnings("unchecked")
   public List<String> getList() throws Exception {
     List<String> children = new ArrayList<String>();
-    OrganizationService service = getApplicationComponent(OrganizationService.class);
     if (TYPE_USER.equals(type_)) {
       ListAccess<User> userPageList = service.getUserHandler().findUsersByGroupId(getCurrentGroup().getId());
       User users[] = userPageList.load(0, userPageList.getSize());
@@ -138,20 +153,39 @@ public class UIGroupSelector extends UIGroupMembershipSelector implements UIPopu
       for (String child : getListMemberhip()) {
         children.add(child);
       }
-    } else if (TYPE_GROUP.equals(type_)) {
-      Collection<Group> groups = service.getGroupHandler().findGroups(getCurrentGroup());
-      for (Group child : groups) {
-        children.add(child.getGroupName());
+    } else if (TYPE_GROUP.equals(type_) && getCurrentGroup() != null) {
+      if (!CommonUtils.isEmpty(spaceId) && getCurrentGroup().getId().equals(spaceParentId)) {
+        Group group = service.getGroupHandler().findGroupById(spaceId);
+        children.add(group.getGroupName());
+      } else {
+        Collection<Group> groups = service.getGroupHandler().findGroups(getCurrentGroup());
+        for (Group child : groups) {
+          children.add(child.getGroupName());
+        }
       }
     }
     return children;
   }
 
-  @SuppressWarnings("unchecked")
-  public void setSelectedGroups(List groups) {
+  public void setSelectedGroups(List<Group> groups) {
     if (groups != null) {
       selectedGroup_ = groups;
       getChild(UITree.class).setSibbling(selectedGroup_);
+    }
+  }
+
+  public void setSpaceGroupId(String groupId) throws Exception {
+    if (!CommonUtils.isEmpty(groupId)) {
+      Group group = service.getGroupHandler().findGroupById(groupId);
+      if (group != null) {
+        this.spaceId = groupId;
+        selectedGroup_ = new ArrayList<Group>();
+        selectedGroup_.add(group);
+        spaceParentId = group.getParentId();
+        changeGroup(spaceParentId);
+      }
+    } else {
+      setSelectedGroups(null);
     }
   }
 
@@ -165,11 +199,9 @@ public class UIGroupSelector extends UIGroupMembershipSelector implements UIPopu
   }
 
   public void activate() throws Exception {
-
   }
 
   public void deActivate() throws Exception {
-
   }
 
   public void setType(String type) {
