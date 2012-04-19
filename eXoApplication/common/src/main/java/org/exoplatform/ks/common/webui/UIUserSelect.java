@@ -16,9 +16,12 @@
  */
 package org.exoplatform.ks.common.webui;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.exoplatform.commons.utils.ListAccess;
 import org.exoplatform.commons.utils.ListAccessImpl;
 import org.exoplatform.commons.utils.SerializablePageList;
 import org.exoplatform.ks.common.CommonUtils;
@@ -63,19 +66,27 @@ public class UIUserSelect extends UIUserSelector {
   @SuppressWarnings({ "unchecked", "deprecation" })
   @Override
   public void processRender(WebuiRequestContext context) throws Exception {
+    List<User> results = new CopyOnWriteArrayList<User>();
+    
     if (!CommonUtils.isEmpty(spaceGroupId) && uiIterator_ != null) {
       OrganizationService service = getApplicationComponent(OrganizationService.class);
-      List<User> results = new CopyOnWriteArrayList<User>();
-      results.addAll(uiIterator_.getPageList().getAll());
+      //List<User> results = new CopyOnWriteArrayList<User>();
+      //results.addAll(uiIterator_.getPageList().getAll());
       // remove if user doesn't exist in selected group
+      /*
       MembershipHandler memberShipHandler = service.getMembershipHandler();
       for (User user : results) {
         if (memberShipHandler.findMembershipsByUserAndGroup(user.getUserName(), spaceGroupId).size() == 0) {
           results.remove(user);
         }
-      }
-      uiIterator_.setPageList(new SerializablePageList<User>(new ListAccessImpl<User>(User.class, results), 10));
+      }*/
+      ListAccess<User> listAccess = service.getUserHandler().findUsersByGroupId(spaceGroupId);
+      results = Arrays.asList(listAccess.load(0, listAccess.getSize()));
+    } else {
+      results.addAll(uiIterator_.getPageList().getAll());
     }
+    
+    uiIterator_.setPageList(new SerializablePageList<User>(new ListAccessImpl<User>(User.class, results), 10));
     super.processRender(context);
   }
 

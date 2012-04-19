@@ -79,7 +79,7 @@ public class UIGroupSelector extends UIGroupMembershipSelector implements UIPopu
 
   private String              returnFieldName = null;
 
-  private String              spaceId         = null;
+  private String              spaceGroupId         = null;
 
   private String              spaceParentId   = null;
 
@@ -91,7 +91,7 @@ public class UIGroupSelector extends UIGroupMembershipSelector implements UIPopu
 
   @Override
   public void processRender(WebuiRequestContext context) throws Exception {
-    if(!CommonUtils.isEmpty(spaceId)) {
+    if(!CommonUtils.isEmpty(spaceGroupId)) {
       UITree uiTree = getChild(UITree.class);
       Group parentGroup = (Group)uiTree.getParentSelected();
       if(parentGroup == null) {
@@ -124,8 +124,7 @@ public class UIGroupSelector extends UIGroupMembershipSelector implements UIPopu
   }
 
   public List<Group> getChildGroup() throws Exception {
-    List<Group> children = UserHelper.findGroups(getCurrentGroup());
-    return children;
+    return UserHelper.findGroups(getCurrentGroup());
   }
 
   public boolean isSelectGroup() {
@@ -143,19 +142,19 @@ public class UIGroupSelector extends UIGroupMembershipSelector implements UIPopu
   @SuppressWarnings("unchecked")
   public List<String> getList() throws Exception {
     List<String> children = new ArrayList<String>();
-    if (TYPE_USER.equals(type_)) {
+    if (isSelectUser()) {
       ListAccess<User> userPageList = service.getUserHandler().findUsersByGroupId(getCurrentGroup().getId());
       User users[] = userPageList.load(0, userPageList.getSize());
       for (int i = 0; i < userPageList.getSize(); i++) {
         children.add(users[i].getUserName());
       }
-    } else if (TYPE_MEMBERSHIP.equals(type_)) {
+    } else if (isSelectMemberShip()) {
       for (String child : getListMemberhip()) {
         children.add(child);
       }
-    } else if (TYPE_GROUP.equals(type_) && getCurrentGroup() != null) {
-      if (!CommonUtils.isEmpty(spaceId) && getCurrentGroup().getId().equals(spaceParentId)) {
-        Group group = service.getGroupHandler().findGroupById(spaceId);
+    } else if (isSelectGroup() && getCurrentGroup() != null) {
+      if (!CommonUtils.isEmpty(spaceGroupId) && getCurrentGroup().getId().equals(spaceParentId)) {
+        Group group = service.getGroupHandler().findGroupById(spaceGroupId);
         children.add(group.getGroupName());
       } else {
         Collection<Group> groups = service.getGroupHandler().findGroups(getCurrentGroup());
@@ -178,7 +177,7 @@ public class UIGroupSelector extends UIGroupMembershipSelector implements UIPopu
     if (!CommonUtils.isEmpty(groupId)) {
       Group group = service.getGroupHandler().findGroupById(groupId);
       if (group != null) {
-        this.spaceId = groupId;
+        this.spaceGroupId = groupId;
         selectedGroup_ = new ArrayList<Group>();
         selectedGroup_.add(group);
         spaceParentId = group.getParentId();
@@ -188,7 +187,6 @@ public class UIGroupSelector extends UIGroupMembershipSelector implements UIPopu
       setSelectedGroups(null);
     }
   }
-
   public void changeGroup(String groupId) throws Exception {
     super.changeGroup(groupId);
     if (selectedGroup_ != null) {

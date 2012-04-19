@@ -253,6 +253,7 @@ public class UIForumPortlet extends UIPortletApplication {
   }
 
   public String getForumIdOfSpace() {
+    
     PortletRequestContext pcontext = (PortletRequestContext) WebuiRequestContext.getCurrentInstance();
     PortletPreferences pref = pcontext.getRequest().getPreferences();
     if (pref.getValue("SPACE_URL", null) != null && ForumUtils.isEmpty(forumSpId)) {
@@ -537,7 +538,8 @@ public class UIForumPortlet extends UIPortletApplication {
 
   public String getUserToken() throws Exception {
     try {
-      ContinuationService continuation = (ContinuationService) PortalContainer.getInstance().getComponentInstanceOfType(ContinuationService.class);
+      ContinuationService continuation = (ContinuationService) PortalContainer.getInstance()
+                                                                         .getComponentInstanceOfType(ContinuationService.class);
       return continuation.getUserToken(userProfile.getUserId());
     } catch (Exception e) {
       log.error("Could not retrieve continuation token for user " + userProfile.getUserId(), e);
