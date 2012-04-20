@@ -29,6 +29,8 @@ import org.exoplatform.webui.application.WebuiRequestContext;
 import org.exoplatform.webui.config.annotation.ComponentConfig;
 import org.exoplatform.webui.config.annotation.EventConfig;
 import org.exoplatform.webui.core.lifecycle.UIFormLifecycle;
+import org.exoplatform.webui.event.Event;
+import org.exoplatform.webui.event.EventListener;
 import org.exoplatform.webui.event.Event.Phase;
 import org.exoplatform.webui.organization.account.UIUserSelector;
 
@@ -42,7 +44,7 @@ import org.exoplatform.webui.organization.account.UIUserSelector;
 @ComponentConfig(lifecycle = UIFormLifecycle.class, template = "system:/groovy/webui/organization/account/UIUserSelector.gtmpl", events = {
   @EventConfig(listeners = UIUserSelector.AddActionListener.class, phase = Phase.DECODE),
   @EventConfig(listeners = UIUserSelector.AddUserActionListener.class, phase = Phase.DECODE),
-  @EventConfig(listeners = UIUserSelector.SearchActionListener.class, phase = Phase.DECODE),
+  @EventConfig(listeners = UIUserSelect.SearchActionListener.class, phase = Phase.DECODE),
   @EventConfig(listeners = UIUserSelector.SearchGroupActionListener.class, phase = Phase.DECODE),
   @EventConfig(listeners = UIUserSelector.SelectGroupActionListener.class, phase = Phase.DECODE),
   @EventConfig(listeners = UIUserSelector.FindGroupActionListener.class, phase = Phase.DECODE),
@@ -62,7 +64,8 @@ public class UIUserSelect extends UIUserSelector {
 
   @Override
   public void processRender(WebuiRequestContext context) throws Exception {
-    if (!CommonUtils.isEmpty(spaceGroupId) && uiIterator_ != null) {
+    String keyword = getUIStringInput(FIELD_KEYWORD).getValue();
+    if (CommonUtils.isEmpty(keyword) && !CommonUtils.isEmpty(spaceGroupId) && uiIterator_ != null) {
       OrganizationService service = getApplicationComponent(OrganizationService.class);
       ListAccess<User> listAccess = service.getUserHandler().findUsersByGroupId(spaceGroupId);
       List<User> results = Arrays.asList(listAccess.load(0, listAccess.getSize()));
@@ -76,9 +79,6 @@ public class UIUserSelect extends UIUserSelector {
   }
 
   public void setSpaceGroupId(String spaceGroupId) {
-    if(!CommonUtils.isEmpty(spaceGroupId)) {
-      setSelectedGroup(spaceGroupId);
-    }
     this.spaceGroupId = spaceGroupId;
   }
 
@@ -90,4 +90,17 @@ public class UIUserSelect extends UIUserSelector {
     this.permisionType = permisionType;
   }
   
+  static public class SearchActionListener extends EventListener<UIUserSelect> {
+    public void execute(Event<UIUserSelect> event) throws Exception {
+      UIUserSelect uiForm = event.getSource();
+      String keyword = uiForm.getUIStringInput(FIELD_KEYWORD).getValue();
+      String filter = uiForm.getUIFormSelectBox(FIELD_FILTER).getValue();
+      String groupId = uiForm.getSpaceGroupId();
+      uiForm.search(keyword, filter, groupId);
+      if (filter == null || filter.trim().length() == 0){
+        return;
+      }
+      event.getRequestContext().addUIComponentToUpdateByAjax(uiForm);
+    }
+  }
 }
